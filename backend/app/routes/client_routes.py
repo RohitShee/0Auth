@@ -16,7 +16,7 @@ def register_client(payload: ClientRegister, db: Session = Depends(deps.get_db))
     
     new_client = Client(
         email=payload.email,
-        hashed_password=Hash.bcrypt(payload.password),
+        hashed_password=Hash.get_password_hash(payload.password),
         name=payload.name
     )
     db.add(new_client)
@@ -27,6 +27,7 @@ def register_client(payload: ClientRegister, db: Session = Depends(deps.get_db))
 # Login Route
 @router.post("/login")
 def login_client(payload: ClientLogin, db: Session = Depends(deps.get_db)):
+    print(payload)
     client = db.query(Client).filter(Client.email == payload.email).first()
     if not client or not Hash.verify(payload.password, client.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
