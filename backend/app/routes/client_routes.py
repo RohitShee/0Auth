@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.client import Client
 from app.schemas.client_schema import ClientRegister, ClientLogin
 from app.utils.hashing import Hash
-from app.utils.token import create_access_token
+from app.utils.token import create_access_token,get_current_client
 from app import deps
 
 router = APIRouter()
@@ -34,3 +34,14 @@ def login_client(payload: ClientLogin, db: Session = Depends(deps.get_db)):
     
     token = create_access_token(data={"sub": str(client.id)})
     return {"access_token": token, "token_type": "bearer"}
+
+@router.get("/check-auth")
+def auth_check(current_client: Client = Depends(get_current_client)):
+    return {
+        "message": "Client is authenticated ",
+        "client": {
+            "id": current_client.id,
+            "email": current_client.email,
+            "name": current_client.name,
+        }
+    }

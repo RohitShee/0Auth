@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { RocketIcon,Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate} from "react-router-dom";
 import { authStore } from "../stores/authStore";
 const SignupPage = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] =  useState({
     email: "",
     name: "",
@@ -12,6 +13,7 @@ const SignupPage = () => {
   const handleSubmit = async(e) => {
     e.preventDefault();
     signup(formData);
+    navigate("/login");
   }
    return (
     <div className="min-h-screen bg-[#0D0D2B] flex items-center justify-center px-4">

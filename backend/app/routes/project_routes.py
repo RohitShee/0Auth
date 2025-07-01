@@ -7,11 +7,11 @@ from app.models.project import Project
 from app.models.client import Client
 from app.schemas.project_schema import ProjectCreate
 from app.utils.api_key import generate_api_key
-from app.utils.token import get_current_client  # assumes JWT-based auth
+from app.utils.token import get_current_client  
 
 router = APIRouter()
 
-@router.post("/create-project", summary="Create new project and generate API key")
+@router.post("/create", summary="Create new project and generate API key")
 def create_project(
     payload: ProjectCreate,
     db: Session = Depends(deps.get_db),
@@ -24,7 +24,7 @@ def create_project(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You can only create up to 3 projects."
         )
-
+    print(payload)
     api_key = generate_api_key()
     new_project = Project(
         name=payload.name,
@@ -38,5 +38,14 @@ def create_project(
     return {
         "project_id": new_project.id,
         "name": new_project.name,
-        "api_key": new_project.api_key
+        "api_key": new_project.api_key,
+        "created_at": new_project.created_at.isoformat()
     }
+
+@router.get("/all")
+def get_all_projects(
+    db: Session = Depends(deps.get_db),
+    client=Depends(get_current_client)
+):
+    projects = db.query(Project).filter(Project.client_id == client.id).all()
+    return {"projects": projects}
