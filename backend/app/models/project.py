@@ -11,6 +11,7 @@ class Project(Base):
     client_id = Column(Integer, ForeignKey("clients.id"))
     name = Column(String(50), nullable=False)
     api_key = Column(String(50), unique=True, nullable=False)
+    request_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 from app.models.client import Client

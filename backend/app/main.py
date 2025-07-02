@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routes import client_routes,project_routes
+from app.routes import client_routes,project_routes,user_routes
 from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
@@ -13,6 +13,7 @@ app.add_middleware(
 # Register client-related routes
 app.include_router(client_routes.router, prefix="/api/client", tags=["Client"])
 app.include_router(project_routes.router, prefix="/api/project", tags=["Project"])
+app.include_router(user_routes.router,prefix="/api/user",tags=["user"])
 @app.get("/")
 def root():
     return {"message": "Auth-as-a-Service is running 🚀"}
