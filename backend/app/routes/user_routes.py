@@ -2,76 +2,88 @@
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
-from app import deps
 from app.models.project import Project
 from app.models.user import User
-from app.schemas.user_schema import UserCreate, UserLogin
+from app.models.user_profile import UserProfile
+from app.schemas.user_schema import  UserLogin,UserSignup, UserOut
 from app.utils.hashing import Hash
 from app.utils.token import create_access_token
 from app.utils.user_token import get_current_user
+from app.deps import get_db, get_project_from_api_key
 router = APIRouter()
 
 # User Signup
-@router.post("/signup")
+@router.post("/signup",response_model=UserOut)
 def signup_user(
-    payload: UserCreate,
-    x_api_key: str = Header(...),
-    db: Session = Depends(deps.get_db)
+    payload: UserSignup,
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_project_from_api_key)
 ):
-    # Validate API Key
-    project = db.query(Project).filter(Project.api_key == x_api_key).first()
-    if not project:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
+    # 1. Check for existing user
+    existing = db.query(User).filter_by(email=payload.email, project_id=project.id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="User already exists")
 
-    if db.query(User).filter(User.email == payload.email, User.project_id == project.id).first():
-        raise HTTPException(status_code=400, detail="User already exists for this project")
+    # 2. Create user
+    hashed_password = Hash.get_password_hash(payload.password)
+    new_user = User(email=payload.email, password=hashed_password, project_id=project.id)
+    db.add(new_user)
+    db.flush()  # get new_user.id without committing
 
-    user = User(
-        email=payload.email,
-        hashed_password=Hash.get_password_hash(payload.password),
-        project_id=project.id
+    # 3. Create user profile
+    profile = UserProfile(
+        user_id=new_user.id,
+        name=payload.name,
+        avatar_url=payload.avatar_url,
+        role=payload.role,
+        custom_fields=payload.custom_fields
     )
-    db.add(user)
-    token = create_access_token(data={"sub": str(user.id)})
-    project.request_count += 1
+    db.add(profile)
 
     db.commit()
-    db.refresh(user)
-    return {"message": "User signed up successfully", "user" : {"user_id" : user.id,"email":user.email} , "auth_details" : {"access_token": token, "token_type": "bearer"} }
+    db.refresh(new_user)
 
-@router.post("/login")
+    # 4. Generate token, etc
+    token = create_access_token(payload={"sub": str(new_user.id)})
+    return {
+        "message": "User signed up successfully",
+        "user": new_user,
+        "auth_details": {
+            "access_token": token,
+            "token_type": "bearer"
+        }
+    }
+
+@router.post("/login", response_model=UserOut)
 def login_user(
     payload: UserLogin,
-    x_api_key: str = Header(...),
-    db: Session = Depends(deps.get_db)
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_project_from_api_key)
 ):
-    project = db.query(Project).filter(Project.api_key == x_api_key).first()
-    if not project:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
 
     user = db.query(User).filter(User.email == payload.email, User.project_id == project.id).first()
     if not user or not Hash.verify(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_access_token(data={"sub": str(user.id)})
+    token = create_access_token(payload={"sub": str(user.id)})
 
-    project.request_count += 1
     db.commit()
 
-    return {"message": "User logged in successfully", "user" : {"user_id" : user.id,"email":user.email} , "auth_details" : {"access_token": token, "token_type": "bearer"} }
-
-@router.get("/me", summary="Check if user is authenticated")
-def get_authenticated_user(
-    x_api_key: str = Header(...),
-    db: Session = Depends(deps.get_db),
-    current_user: User = Depends(get_current_user)):
-    project = db.query(Project).filter(Project.api_key == x_api_key).first()
-    if not project:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
-    project.request_count += 1
     return {
-        "id": current_user.id,
-        "username": current_user.username,
-        "email": current_user.email,
-        "project_id": current_user.project_id
+        "message": "User logged in successfully",
+        "user": user,
+        "auth_details": {
+            "access_token": token,
+            "token_type": "bearer"
+        }
+    }
+
+@router.get("/me", response_model=UserOut, summary="Check if user is authenticated")
+def get_authenticated_user(
+    db: Session = Depends(get_db),
+    project: Project = Depends(get_project_from_api_key),
+    current_user: User = Depends(get_current_user)):
+    return {
+        "message": "User is Authenticated",
+        "user": current_user,
     }

@@ -10,6 +10,7 @@ from app.schemas.project_schema import ProjectCreate
 from app.utils.api_key import generate_api_key
 from app.utils.token import get_current_client  
 from app.deps import get_db
+from app.schemas.user_schema import AllUsersResponse
 router = APIRouter()
 
 @router.post("/create", summary="Create new project and generate API key")
@@ -66,3 +67,17 @@ def get_all_projects(
         })
 
     return {"projects": result}
+
+@router.get("/all/{project_id}", response_model=AllUsersResponse)
+def get_all_users_for_project(
+    project_id: int ,
+    db: Session = Depends(get_db),
+    client = Depends(get_current_client)
+):
+    # Ensure the project belongs to the authenticated client
+    project = db.query(Project).filter_by(id=project_id, client_id=client.id).first()
+    if not project:
+        raise HTTPException(status_code=403, detail="Access denied or invalid project ID")
+
+    users = db.query(User).filter_by(project_id=project.id).all()
+    return {"users": users}

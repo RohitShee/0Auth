@@ -11,7 +11,7 @@ const LoginPage = () => {
   const {login, isLoggingIn} = authStore();
   const  handleSubmit =async (e) =>{
     e.preventDefault();
-    login(formData);
+    await login(formData);
     navigate("/")
   }
    return (
