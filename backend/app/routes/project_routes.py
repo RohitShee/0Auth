@@ -70,14 +70,19 @@ def get_all_projects(
 
 @router.get("/all/{project_id}", response_model=AllUsersResponse)
 def get_all_users_for_project(
-    project_id: int ,
+    project_id: int,
     db: Session = Depends(get_db),
-    client = Depends(get_current_client)
+    client=Depends(get_current_client)
 ):
     # Ensure the project belongs to the authenticated client
     project = db.query(Project).filter_by(id=project_id, client_id=client.id).first()
     if not project:
         raise HTTPException(status_code=403, detail="Access denied or invalid project ID")
 
+    # Fetch users
     users = db.query(User).filter_by(project_id=project.id).all()
-    return {"users": users}
+
+    # Dynamically add user_count
+    project.user_count = len(users)  # Add dynamic field
+
+    return {"users": users, "project": project}

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.models.project import Project
 from app.models.user import User
 from app.models.user_profile import UserProfile
-from app.schemas.user_schema import  UserLogin,UserSignup, UserOut
+from app.schemas.user_schema import  UserLogin,UserSignup, UserOut,UserAuthResponse
 from app.utils.hashing import Hash
 from app.utils.token import create_access_token
 from app.utils.user_token import get_current_user
@@ -13,7 +13,7 @@ from app.deps import get_db, get_project_from_api_key
 router = APIRouter()
 
 # User Signup
-@router.post("/signup",response_model=UserOut)
+@router.post("/signup",response_model=UserAuthResponse)
 def signup_user(
     payload: UserSignup,
     db: Session = Depends(get_db),
@@ -26,7 +26,7 @@ def signup_user(
 
     # 2. Create user
     hashed_password = Hash.get_password_hash(payload.password)
-    new_user = User(email=payload.email, password=hashed_password, project_id=project.id)
+    new_user = User(email=payload.email, hashed_password=hashed_password, project_id=project.id)
     db.add(new_user)
     db.flush()  # get new_user.id without committing
 
@@ -36,7 +36,7 @@ def signup_user(
         name=payload.name,
         avatar_url=payload.avatar_url,
         role=payload.role,
-        custom_fields=payload.custom_fields
+        custom_field=payload.custom_field
     )
     db.add(profile)
 
@@ -44,7 +44,7 @@ def signup_user(
     db.refresh(new_user)
 
     # 4. Generate token, etc
-    token = create_access_token(payload={"sub": str(new_user.id)})
+    token = create_access_token(data={"sub": str(new_user.id)})
     return {
         "message": "User signed up successfully",
         "user": new_user,
@@ -54,7 +54,7 @@ def signup_user(
         }
     }
 
-@router.post("/login", response_model=UserOut)
+@router.post("/login", response_model=UserAuthResponse)
 def login_user(
     payload: UserLogin,
     db: Session = Depends(get_db),
@@ -65,7 +65,7 @@ def login_user(
     if not user or not Hash.verify(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_access_token(payload={"sub": str(user.id)})
+    token = create_access_token(data={"sub": str(user.id)})
 
     db.commit()
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { User2, KeyRound } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function ProjectCard({ project }) {
   const [copied, setCopied] = useState(false);
@@ -13,9 +14,9 @@ export default function ProjectCard({ project }) {
 
   return (
     <div className="bg-[#1A1A40] p-4 rounded-lg border border-gray-700 mb-4">
-      <h3 className="text-indigo-300 text-base font-semibold mb-1">
+      <Link to={`/project/${project.id}`} className="text-indigo-300 text-base font-semibold mb-1 hover:text-indigo-600 hover:underline">
         {project.name}
-      </h3>
+      </Link>
       <p className="text-sm text-gray-400 mb-1">
         Created: {new Date(project.created_at).toLocaleDateString()}
       </p>
