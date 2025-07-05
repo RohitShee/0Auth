@@ -54,3 +54,11 @@ class UserAuthResponse(BaseModel):
     message: str
     user: UserOut
     auth_details: AuthDetails
+
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str]
+    avatar_url: Optional[str]
+    role: Optional[str]
+    custom_field: Optional[Dict[str, Any]] = {}
+

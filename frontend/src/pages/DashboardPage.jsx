@@ -8,7 +8,16 @@ const DashboardPage = () => {
   const { projects, fetchProjects } = projectStore();
 
   useEffect(() => {
-    fetchProjects(); 
+    //fetchProjects(); 
+    const fetchDataAsync = async () => {
+    try {
+      const data = await fetchProjects();
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
+  fetchDataAsync();
   }, []);
 
   return (

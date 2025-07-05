@@ -6,11 +6,12 @@ from app import deps
 from app.models.project import Project
 from app.models.client import Client
 from app.models.user import User
+from app.models.user_profile import UserProfile
 from app.schemas.project_schema import ProjectCreate
 from app.utils.api_key import generate_api_key
 from app.utils.token import get_current_client  
 from app.deps import get_db
-from app.schemas.user_schema import AllUsersResponse
+from app.schemas.user_schema import AllUsersResponse,UserProfileUpdate
 router = APIRouter()
 
 @router.post("/create", summary="Create new project and generate API key")
@@ -63,7 +64,7 @@ def get_all_projects(
             "api_key": project.api_key,
             "created_at": project.created_at,
             "user_count": user_count,
-            "request_count": project.request_count  # if added earlier
+            "request_count": project.request_count  
         })
 
     return {"projects": result}
@@ -74,15 +75,60 @@ def get_all_users_for_project(
     db: Session = Depends(get_db),
     client=Depends(get_current_client)
 ):
-    # Ensure the project belongs to the authenticated client
     project = db.query(Project).filter_by(id=project_id, client_id=client.id).first()
     if not project:
         raise HTTPException(status_code=403, detail="Access denied or invalid project ID")
 
-    # Fetch users
     users = db.query(User).filter_by(project_id=project.id).all()
 
-    # Dynamically add user_count
-    project.user_count = len(users)  # Add dynamic field
+    project.user_count = len(users) 
 
     return {"users": users, "project": project}
+
+@router.delete("/{project_id}/user/{user_id}")
+def delete_user_from_project(
+    project_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    client=Depends(get_current_client)):
+    
+    project = db.query(Project).filter_by(id=project_id, client_id=client.id).first()
+    if not project:
+        raise HTTPException(status_code=403, detail="Access denied or invalid project ID")
+   
+    user = db.query(User).filter_by(id=user_id, project_id=project.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found in this project")
+    
+    db.delete(user)
+    db.commit()
+    return {"message": "User deleted successfully from the project"}
+
+@router.put("/{project_id}/user/{user_id}")
+def update_user(
+    project_id: int,
+    user_id: int,
+    payload: UserProfileUpdate,
+    db: Session = Depends(get_db),
+    client=Depends(get_current_client)
+):
+   
+    project = db.query(Project).filter_by(id=project_id, client_id=client.id).first()
+    if not project:
+        raise HTTPException(status_code=403, detail="Access denied or invalid project")
+
+    
+    user = db.query(User).filter_by(id=user_id, project_id=project.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    profile = db.query(UserProfile).filter_by(user_id=user.id).first()
+    if not profile:
+        profile = UserProfile(user_id=user.id)
+        db.add(profile)
+
+    for attr, value in payload.model_dump(exclude_unset=True).items():
+        setattr(profile, attr, value)
+
+    db.commit()
+    return {"message": "User updated successfully"}
