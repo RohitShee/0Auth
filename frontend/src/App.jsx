@@ -8,6 +8,7 @@ import { authStore } from "./stores/authStore"
 import { useEffect } from "react"
 import DashboardPage from "./pages/DashboardPage"
 import ProjectOverview from "./pages/ProjectOverview"
+import TutorialPage from "./pages/TutprialPage"
 function App() {
   const{user,checkAuth} = authStore();
   useEffect(()=>{
@@ -22,6 +23,7 @@ function App() {
           <Route path="/signup" element={<SignupPage/>} />
           <Route path="/dashboard" element={user ? <DashboardPage/> : <Navigate to="/"/>} />
           <Route path="/project/:id" element={<ProjectOverview/>}/>
+          <Route path="/tutorial" element={<TutorialPage/>}/>
         </Routes>
         <Toaster/>
     </>
